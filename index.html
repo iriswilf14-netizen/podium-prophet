@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PODIUM PROPHET — World Cup Predictions</title>
+<style>
+  /* ============================================================
+     PODIUM PROPHET — a fun, classroom "betting" prediction game
+     for ESL students. Predict the podium, place a bet with
+     PROPHET COINS (a pun on PROFIT!), build a superlative
+     sentence, and grab your betting slip.
+     Design = stadium-at-night: floodlights, bunting, goal net.
+     ============================================================ */
+
+  :root{
+    --pitch:#0a6e36;
+    --pitch-2:#0a5a2d;
+    --night:#06160d;
+    --gold:#ffd24a;
+    --gold-deep:#e8a900;
+    --silver:#d6dde6;
+    --bronze:#cd8a4b;
+    --ink:#0e1726;
+    --ink-soft:#46566f;
+    --paper:#fffdf6;
+    --line:#e6e0cf;
+    --accent:#ff3b6b;
+    --blue:#1f6fff;
+    --shadow:0 18px 44px rgba(0,0,0,.4);
+    font-family:"Arial Black","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%}
+  body{
+    color:var(--ink);
+    background:
+      /* floodlight glows */
+      radial-gradient(900px 500px at 12% -8%, rgba(255,255,235,.30), transparent 60%),
+      radial-gradient(900px 500px at 88% -8%, rgba(255,255,235,.30), transparent 60%),
+      /* stadium night */
+      radial-gradient(1400px 800px at 50% 120%, var(--pitch) 0%, var(--pitch-2) 32%, #073a20 60%, var(--night) 100%);
+    background-attachment:fixed;
+    overflow-x:hidden;
+  }
+  /* goal-net crosshatch + pitch mow-stripes overlay */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.05) 0 1px, transparent 1px 22px);
+  }
+  /* drifting soccer balls in the back */
+  body::after{
+    content:"⚽ ⚽ ⚽ ⚽ ⚽ ⚽";position:fixed;inset:auto 0 0 0;z-index:0;
+    text-align:center;font-size:120px;opacity:.05;letter-spacing:60px;line-height:1;pointer-events:none;
+    filter:grayscale(1);
+  }
+
+  .wrap{position:relative;z-index:2;max-width:940px;margin:0 auto;padding:0 16px 60px}
+
+  /* ---------- bunting flags ---------- */
+  .bunting{display:flex;justify-content:center;flex-wrap:wrap;gap:0;padding:6px 0 0;line-height:0}
+  .bunting i{
+    width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;
+    border-top:22px solid var(--gold);margin:0 2px;filter:drop-shadow(0 4px 3px rgba(0,0,0,.3));
+  }
+  .bunting i:nth-child(3n+1){border-top-color:#ff3b6b}
+  .bunting i:nth-child(3n+2){border-top-color:#1f6fff}
+  .bunting i:nth-child(5n){border-top-color:#fff}
+
+  .screen{display:none;animation:pop .45s cubic-bezier(.2,.9,.3,1.2)}
+  .screen.active{display:block}
+  @keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+
+  /* ---------- hero ---------- */
+  .brand{text-align:center;color:#fff;margin:8px 0 4px;position:relative}
+  .kicker{
+    display:inline-block;background:var(--accent);color:#fff;font-weight:900;letter-spacing:3px;
+    text-transform:uppercase;font-size:13px;padding:5px 16px;border-radius:6px;
+    box-shadow:0 6px 16px rgba(0,0,0,.35);transform:rotate(-1.5deg)
+  }
+  .brand .cup{
+    font-size:74px;line-height:1;margin-top:6px;
+    filter:drop-shadow(0 0 26px rgba(255,210,74,.85)) drop-shadow(0 10px 14px rgba(0,0,0,.4));
+    animation:bob 3s ease-in-out infinite
+  }
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-12px) rotate(4deg)}}
+  .brand h1{
+    margin:.04em 0 0;font-size:clamp(40px,9vw,76px);font-weight:900;letter-spacing:1px;font-style:italic;
+    text-transform:uppercase;line-height:.92;
+    background:linear-gradient(180deg,#fff 40%,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 3px 0 rgba(0,0,0,.18);
+  }
+  .brand .tag{color:#dffbe8;font-size:clamp(14px,2.6vw,18px);font-weight:700;opacity:.96;margin-top:4px;font-style:italic}
+
+  /* scoreboard ribbon */
+  .ribbon{
+    display:flex;justify-content:center;gap:0;margin:14px auto 0;max-width:560px;
+    background:#091a12;border:2px solid rgba(255,210,74,.5);border-radius:12px;overflow:hidden;
+    box-shadow:0 10px 26px rgba(0,0,0,.4), inset 0 0 30px rgba(0,0,0,.5)
+  }
+  .ribbon div{flex:1;text-align:center;padding:9px 6px;color:var(--gold);font-weight:900;
+    font-size:13px;letter-spacing:1.5px;text-transform:uppercase;border-right:1px solid rgba(255,255,255,.08)}
+  .ribbon div:last-child{border-right:none}
+  .ribbon div small{display:block;color:#9fe9bb;font-size:10px;letter-spacing:.5px;font-weight:700}
+
+  /* ---------- cards ---------- */
+  .card{
+    background:var(--paper);border-radius:20px;box-shadow:var(--shadow);
+    padding:24px;margin:18px 0;position:relative;overflow:hidden;
+    border-top:6px solid var(--gold);
+  }
+  .card::before{ /* soccer-ball watermark */
+    content:"⚽";position:absolute;right:-18px;bottom:-26px;font-size:130px;opacity:.05;transform:rotate(-12deg)
+  }
+  .card>*{position:relative}
+  .card h2{margin:0 0 6px;font-size:23px;font-style:italic;text-transform:uppercase;letter-spacing:.5px}
+  .muted{color:var(--ink-soft);font-weight:600}
+  .center{text-align:center}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;justify-content:center;
+    border:none;cursor:pointer;font-weight:900;font-size:17px;font-style:italic;
+    padding:14px 28px;border-radius:999px;color:#1a1205;
+    background:linear-gradient(180deg,var(--gold),var(--gold-deep));
+    box-shadow:0 8px 0 #b98600, 0 14px 24px rgba(0,0,0,.3);
+    transition:transform .08s, box-shadow .08s;
+    text-transform:uppercase;letter-spacing:.6px;
+  }
+  .btn:active{transform:translateY(5px);box-shadow:0 3px 0 #b98600,0 6px 12px rgba(0,0,0,.25)}
+  .btn:disabled{filter:grayscale(.6) brightness(.95);cursor:not-allowed;opacity:.7;box-shadow:0 8px 0 #9a9a9a}
+  .btn.ghost{background:#fff;color:var(--ink);box-shadow:0 8px 0 #d9d2bf,0 14px 22px rgba(0,0,0,.2)}
+  .btn.ghost:active{box-shadow:0 3px 0 #d9d2bf}
+  .btn.small{font-size:14px;padding:9px 16px;box-shadow:0 5px 0 #b98600}
+  .btn.small:active{box-shadow:0 2px 0 #b98600}
+  .btn.ghost.small{box-shadow:0 5px 0 #d9d2bf}
+  .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:16px}
+
+  /* ---------- intro steps ---------- */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 4px}
+  .step{background:#fff;border:2px solid var(--line);border-radius:16px;padding:14px;text-align:center;position:relative}
+  .step .n{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;
+    background:var(--pitch);color:#fff;font-weight:900;margin-bottom:8px;font-size:18px;
+    box-shadow:0 4px 0 #063a1f}
+  .step b{display:block;margin-bottom:2px;font-style:italic;text-transform:uppercase;font-size:14px}
+  .step small{color:var(--ink-soft);font-weight:600}
+  .coinnote{background:#fff7df;border:2px solid #f1e3a8;border-radius:14px;padding:14px 16px;margin-top:16px}
+  .coinnote b{color:var(--gold-deep)}
+
+  /* ---------- inputs ---------- */
+  .field{margin:14px 0}
+  .field label{display:block;font-weight:900;margin-bottom:6px;font-style:italic;text-transform:uppercase;font-size:14px}
+  input[type=text]{
+    width:100%;font-size:18px;padding:14px 16px;border-radius:14px;border:2px solid var(--line);
+    background:#fff;outline:none;font-family:inherit;font-weight:700;
+  }
+  input[type=text]:focus{border-color:var(--pitch)}
+
+  /* ---------- podium slots ---------- */
+  .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 4px;align-items:end}
+  .slot{
+    border-radius:16px;padding:12px 8px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    cursor:pointer;position:relative;border:3px solid transparent;color:#5b4a17;
+    transition:transform .12s;
+  }
+  .slot.gold{min-height:150px;background:linear-gradient(180deg,#fff3c2,#ffd24a);border-color:var(--gold-deep)}
+  .slot.silver{min-height:124px;background:linear-gradient(180deg,#f4f7fb,#cdd6e1);border-color:#9fb0c2;color:#34404f}
+  .slot.bronze{min-height:108px;background:linear-gradient(180deg,#f3ddc4,#e0a368);border-color:#b06f33;color:#5b3a16}
+  .slot:hover{transform:translateY(-3px)}
+  .slot .place{font-size:12px;font-weight:900;letter-spacing:.5px;text-transform:uppercase}
+  .slot .pick-flag{font-size:36px;line-height:1}
+  .slot .pick-name{font-weight:900;font-size:15px}
+  .slot .empty{opacity:.7;font-size:13px;font-weight:800}
+
+  /* ---------- team grid ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px;margin-top:14px}
+  .team{
+    background:#fff;border:2px solid var(--line);border-radius:14px;padding:10px 8px;text-align:center;
+    cursor:pointer;transition:transform .1s, box-shadow .1s, opacity .15s;position:relative;
+  }
+  .team:hover{transform:translateY(-3px);box-shadow:0 10px 18px rgba(0,0,0,.16);border-color:var(--pitch)}
+  .team .flag{font-size:32px;line-height:1}
+  .team .nm{font-weight:900;font-size:13px;margin-top:3px}
+  .team .odds{display:inline-block;margin-top:4px;font-size:11px;font-weight:900;color:var(--gold);
+    background:var(--ink);border-radius:999px;padding:2px 9px}
+  .team.used{opacity:.3;pointer-events:none}
+  .team.used::after{content:"✓ PICKED";position:absolute;inset:0;display:grid;place-items:center;
+    font-weight:900;color:var(--pitch);font-size:13px}
+
+  /* ---------- bet + sentence ---------- */
+  .stake{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:8px 0 4px}
+  .stake input[type=range]{flex:1;min-width:200px;accent-color:var(--pitch);height:8px}
+  .stakeval{font-weight:900;font-size:24px;color:var(--pitch);white-space:nowrap;font-style:italic}
+  .payout{background:#eafff0;border:2px solid #b7ecc8;border-radius:14px;padding:13px 16px;margin-top:12px;font-weight:700}
+  .payout b{color:var(--pitch)}
+
+  .sentence{font-size:19px;line-height:2.1;background:#fff;border:2px solid var(--line);border-radius:14px;padding:16px;font-weight:600}
+  .blank{display:inline-block;min-width:120px;border-bottom:3px solid var(--accent);text-align:center;
+    font-weight:900;color:var(--accent);padding:0 6px}
+  .blank.filled{color:var(--pitch);border-bottom-color:var(--pitch)}
+  .wordbank{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .word{background:#fff;border:2px solid var(--line);border-radius:999px;padding:8px 14px;font-weight:800;
+    cursor:pointer;transition:transform .08s}
+  .word:hover{transform:translateY(-2px);border-color:var(--pitch)}
+  .word.active{background:var(--pitch);color:#fff;border-color:var(--pitch)}
+
+  /* ---------- betting slip ---------- */
+  .slip{
+    background:repeating-linear-gradient(0deg,#fff,#fff 28px,#fbf6e6 28px,#fbf6e6 29px),var(--paper);
+    border-radius:18px;box-shadow:var(--shadow);padding:0;overflow:hidden;border:2px solid var(--gold);
+    max-width:520px;margin:0 auto;
+  }
+  .slip .top{background:var(--ink);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+  .slip .top b{font-size:20px;letter-spacing:1px;font-style:italic}
+  .slip .top .id{font-size:12px;opacity:.7}
+  .slip .body{padding:18px 22px}
+  .slipline{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line)}
+  .slipline .m{font-size:26px}
+  .slipline .who{font-weight:900;font-size:18px;flex:1}
+  .slipline .pl{font-size:12px;font-weight:900;color:var(--ink-soft);text-transform:uppercase}
+  .slipsay{font-style:italic;font-size:17px;color:var(--ink-soft);margin:14px 0 4px;line-height:1.6}
+  .slipsay b{color:var(--pitch);font-style:normal}
+  .slip .foot{display:flex;justify-content:space-between;align-items:center;padding:14px 22px;background:#fff7df;border-top:2px dashed var(--gold-deep)}
+  .slip .foot .stk{font-weight:800}
+  .slip .foot .win{font-weight:900;color:var(--pitch);font-size:18px}
+  .perfectbonus{text-align:center;color:var(--gold-deep);font-weight:900;margin-top:8px}
+
+  /* ---------- leaderboard ---------- */
+  .lb{width:100%;border-collapse:collapse;margin-top:8px}
+  .lb th,.lb td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--line);font-size:15px}
+  .lb th{color:var(--ink-soft);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  .lb td.pts{font-weight:900;color:var(--pitch);text-align:right;white-space:nowrap}
+  .lb tr.win td{background:#fff7df}
+
+  .teacher{margin-top:18px;border:2px dashed var(--blue);border-radius:14px;padding:14px;background:#f2f7ff}
+  .teacher summary{font-weight:900;cursor:pointer;color:var(--blue);font-style:italic;text-transform:uppercase;font-size:14px}
+  .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .mini select{padding:10px;border-radius:10px;border:2px solid var(--line);font-size:14px;width:100%;font-family:inherit;font-weight:700}
+  .mini label{font-size:12px;font-weight:900;display:block;margin-bottom:4px;text-transform:uppercase}
+
+  /* progress dots */
+  .dots{display:flex;gap:8px;justify-content:center;margin:10px 0 -4px}
+  .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.35);border:1px solid rgba(255,255,255,.4)}
+  .dot.on{background:var(--gold);border-color:var(--gold);box-shadow:0 0 10px rgba(255,210,74,.8)}
+
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+  .hint{font-size:13px;color:var(--ink-soft);margin-top:8px;font-weight:600}
+  .err{color:var(--accent);font-weight:800;margin-top:8px;min-height:20px}
+
+  @media(max-width:520px){
+    .steps{grid-template-columns:1fr}
+    .ribbon div{font-size:11px;letter-spacing:.5px}
+  }
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+<div class="wrap">
+
+  <div class="bunting" aria-hidden="true">
+    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+  </div>
+
+  <div class="brand">
+    <span class="kicker" id="kicker">⚽ World Cup 2026 ⚽</span>
+    <div class="cup">🏆</div>
+    <h1>Podium<br>Prophet</h1>
+    <div class="tag" id="tag">Predict the podium. Place your bet. Win the glory.</div>
+  </div>
+
+  <div class="ribbon">
+    <div>① Predict<small>Top 3 teams</small></div>
+    <div>② Bet<small>Prophet coins</small></div>
+    <div>③ Speak<small>In English</small></div>
+    <div>④ Win<small>The glory</small></div>
+  </div>
+
+  <!-- ============== SCREEN 1: INTRO ============== -->
+  <section class="screen active" id="s-intro">
+    <div class="card">
+      <h2 class="center">🎲 Place your bets, class! 🎲</h2>
+      <p class="center muted">You are a football <b>prophet</b> — someone who predicts the future.
+      Guess who will finish <b>1st</b>, <b>2nd</b> and <b>3rd</b> at the World Cup.</p>
+
+      <div class="steps">
+        <div class="step"><span class="n">1</span><b>Pick the podium</b><small>Choose your top 3 teams</small></div>
+        <div class="step"><span class="n">2</span><b>Place a bet</b><small>Stake your Prophet Coins</small></div>
+        <div class="step"><span class="n">3</span><b>Say it in English</b><small>Build a superlative sentence</small></div>
+      </div>
+
+      <div class="coinnote center">
+        💰 Everyone starts with <b>1,000 PROPHET COINS</b>.
+        <br><small class="muted">Fun word pair: <b>profit</b> = money you gain &nbsp;•&nbsp; <b>prophet</b> = a person who predicts the future. They sound exactly the same! 🔮</small>
+      </div>
+
+      <div class="row">
+        <button class="btn" onclick="go('s-name')">Kick Off ▶</button>
+        <button class="btn ghost small" onclick="go('s-leaderboard'); renderBoard()">📋 Class Leaderboard</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== SCREEN 2: NAME ============== -->
+  <section class="screen" id="s-name">
+    <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+    <div class="card">
+      <h2>👋 What's your prophet name?</h2>
+      <p class="muted">This goes on your betting slip and the class leaderboard.</p>
+      <div class="field">
+        <label for="pname">Your name</label>
+        <input type="text" id="pname" placeholder="e.g. Maya the Magnificent" maxlength="28" autocomplete="off">
+      </div>
+      <div class="err" id="nameErr"></div>
+      <div class="row">
+        <button class="btn ghost small" onclick="go('s-intro')">◀ Back</button>
+        <button class="btn" onclick="startPicks()">Next ▶</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== SCREEN 3: PODIUM PICKS ============== -->
+  <section class="screen" id="s-picks">
+    <div class="dots"><span class="dot on"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+    <div class="card">
+      <h2>🥇 Build your podium</h2>
+      <p class="muted">Tap a team to drop it into the next medal spot. Tap a medal to remove it.</p>
+      <div class="slots">
+        <div class="slot gold"   id="slot0" onclick="clearSlot(0)"><div class="place">🥇 Champion</div><div class="empty">— tap a team —</div></div>
+        <div class="slot silver" id="slot1" onclick="clearSlot(1)"><div class="place">🥈 Runner-up</div><div class="empty">— tap a team —</div></div>
+        <div class="slot bronze" id="slot2" onclick="clearSlot(2)"><div class="place">🥉 Third place</div><div class="empty">— tap a team —</div></div>
+      </div>
+      <div class="hint">💡 The number on each team is the <b>odds</b>. A big number means an <b>underdog</b> (not expected to win) — so it pays much more if you're right!</div>
+      <div class="grid" id="teamGrid"></div>
+      <div class="row">
+        <button class="btn ghost small" onclick="go('s-name')">◀ Back</button>
+        <button class="btn ghost small" onclick="clearAll()">↺ Clear</button>
+        <button class="btn" id="picksNext" onclick="go('s-bet'); renderBet()" disabled>Next ▶</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== SCREEN 4: BET + SENTENCE ============== -->
+  <section class="screen" id="s-bet">
+    <div class="dots"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot"></span></div>
+    <div class="card">
+      <h2>💰 How sure are you?</h2>
+      <p class="muted">Stake your Prophet Coins on your <b>champion</b>. More coins = bigger win (or bigger loss!).</p>
+      <div class="stake">
+        <input type="range" id="stake" min="100" max="1000" step="100" value="500" oninput="renderBet()">
+        <span class="stakeval" id="stakeval">500 🪙</span>
+      </div>
+      <div class="payout" id="payout"></div>
+
+      <h2 style="margin-top:22px">🗣️ Now say it in English</h2>
+      <p class="muted">Tap a word to fill the blank. This is a <b>superlative</b> — the most extreme (the <i>best</i>, the <i>strong<u>est</u></i>).</p>
+      <div class="sentence">
+        I think <b id="senseTeam" style="color:var(--pitch)">your team</b> will win
+        because they are the <span class="blank" id="blank">_______</span> team in the world!
+      </div>
+      <div class="wordbank" id="wordbank"></div>
+
+      <div class="err" id="betErr"></div>
+      <div class="row">
+        <button class="btn ghost small" onclick="go('s-picks')">◀ Back</button>
+        <button class="btn" onclick="makeSlip()">🎟️ Get my betting slip!</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== SCREEN 5: SLIP / RESULT ============== -->
+  <section class="screen" id="s-slip">
+    <div class="dots"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span></div>
+    <h2 class="center" style="color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.4);font-style:italic;text-transform:uppercase">🎉 Your bet is locked in! 🎉</h2>
+    <div id="slipBox"></div>
+    <div class="row">
+      <button class="btn ghost small" onclick="saveToBoard()">📋 Add me to the class leaderboard</button>
+      <button class="btn ghost small" onclick="go('s-leaderboard'); renderBoard()">See leaderboard</button>
+      <button class="btn small" onclick="resetGame()">🔁 Next student</button>
+    </div>
+    <p class="center" style="color:#dffbe8;margin-top:14px;font-weight:700">📸 Tip: screenshot your slip to keep it!</p>
+  </section>
+
+  <!-- ============== SCREEN 6: LEADERBOARD ============== -->
+  <section class="screen" id="s-leaderboard">
+    <div class="card">
+      <h2>📋 Class Leaderboard</h2>
+      <p class="muted">Everyone's predictions. Once the real podium is known, the teacher enters the results and we crown the <b>true prophet</b>!</p>
+      <div id="boardBox"></div>
+
+      <details class="teacher" id="teacherPanel">
+        <summary>👩‍🏫 Teacher: enter the real results &amp; score everyone</summary>
+        <p class="muted" style="font-size:14px">Pick the actual finishing podium, then press <b>Score everyone</b>.</p>
+        <div class="mini">
+          <div><label>🥇 Champion</label><select id="real0"></select></div>
+          <div><label>🥈 Runner-up</label><select id="real1"></select></div>
+          <div><label>🥉 Third</label><select id="real2"></select></div>
+        </div>
+        <div class="row" style="justify-content:flex-start">
+          <button class="btn small" onclick="scoreAll()">🏁 Score everyone</button>
+          <button class="btn ghost small" onclick="clearScores()">Clear scores</button>
+          <button class="btn ghost small" onclick="wipeBoard()">🗑️ Reset board</button>
+        </div>
+        <p class="hint" style="margin-top:6px"><b>Scoring:</b> champion right = stake × odds &nbsp;•&nbsp; runner-up right = +200 &nbsp;•&nbsp; third right = +200 &nbsp;•&nbsp; perfect podium = +1000 bonus.</p>
+      </details>
+
+      <div class="row">
+        <button class="btn ghost small" onclick="go('s-intro')">🏠 Home</button>
+        <button class="btn small" onclick="resetGame()">➕ New prediction</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="center" style="color:#bfe9cf;font-size:12px;margin-top:24px;font-weight:700">
+    ⚽ Podium Prophet • a few-minute ESL warm-up • no real money — just glory 🏆
+  </p>
+</div>
+
+<script>
+/* =================================================================
+   ⚙️  EASY TEACHER CONFIG — change anything here
+   - TOURNAMENT / TAGLINE: rename the header for any tournament
+   - TEAMS: name, flag emoji, "odds" (2 = favourite, 30 = underdog)
+   - WORDS: the superlative adjectives in the word bank
+   ================================================================= */
+const TOURNAMENT = "⚽ World Cup 2026 ⚽";
+const TAGLINE    = "Predict the podium. Place your bet. Win the glory.";
+
+const TEAMS = [
+  {n:"Argentina",   f:"🇦🇷", o:4},
+  {n:"Brazil",      f:"🇧🇷", o:4},
+  {n:"France",      f:"🇫🇷", o:5},
+  {n:"England",     f:"🇬🇧", o:6},
+  {n:"Spain",       f:"🇪🇸", o:6},
+  {n:"Germany",     f:"🇩🇪", o:7},
+  {n:"Portugal",    f:"🇵🇹", o:8},
+  {n:"Netherlands", f:"🇳🇱", o:9},
+  {n:"Belgium",     f:"🇧🇪", o:11},
+  {n:"Italy",       f:"🇮🇹", o:11},
+  {n:"Croatia",     f:"🇭🇷", o:14},
+  {n:"Uruguay",     f:"🇺🇾", o:15},
+  {n:"USA",         f:"🇺🇸", o:16},
+  {n:"Mexico",      f:"🇲🇽", o:18},
+  {n:"Morocco",     f:"🇲🇦", o:18},
+  {n:"Japan",       f:"🇯🇵", o:20},
+  {n:"Colombia",    f:"🇨🇴", o:20},
+  {n:"Senegal",     f:"🇸🇳", o:25},
+  {n:"South Korea", f:"🇰🇷", o:28},
+  {n:"Canada",      f:"🇨🇦", o:30},
+];
+
+const WORDS = ["strongest","fastest","best","most skilful","most talented",
+               "most determined","luckiest","hungriest","most exciting"];
+
+/* ---------------- state ---------------- */
+let podium = [null,null,null];
+let chosenWord = null;
+let player = "";
+const STORE = "podiumProphet.board.v1";
+
+/* set header from config */
+document.getElementById('kicker').textContent = TOURNAMENT;
+document.getElementById('tag').textContent = TAGLINE;
+
+/* ---------------- navigation ---------------- */
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ---------------- name ---------------- */
+function startPicks(){
+  const v = document.getElementById('pname').value.trim();
+  if(v.length < 2){ document.getElementById('nameErr').textContent = "Please type your name first 🙂"; return; }
+  document.getElementById('nameErr').textContent = "";
+  player = v;
+  buildGrid();
+  go('s-picks');
+}
+
+/* ---------------- team grid ---------------- */
+function buildGrid(){
+  const g = document.getElementById('teamGrid');
+  g.innerHTML = "";
+  TEAMS.forEach((t,i)=>{
+    const d = document.createElement('div');
+    d.className = "team";
+    d.id = "team"+i;
+    d.innerHTML = `<div class="flag">${t.f}</div><div class="nm">${t.n}</div><div class="odds">×${t.o}</div>`;
+    d.onclick = ()=>pickTeam(i);
+    g.appendChild(d);
+  });
+  refreshGrid();
+}
+function pickTeam(i){
+  if(podium.includes(i)) return;
+  const empty = podium.indexOf(null);
+  if(empty === -1) return;
+  podium[empty] = i;
+  refreshSlots(); refreshGrid(); checkPicksDone();
+}
+function clearSlot(s){
+  if(podium[s]===null) return;
+  podium[s]=null;
+  refreshSlots(); refreshGrid(); checkPicksDone();
+}
+function clearAll(){ podium=[null,null,null]; refreshSlots(); refreshGrid(); checkPicksDone(); }
+
+function refreshSlots(){
+  const labels=["🥇 Champion","🥈 Runner-up","🥉 Third place"];
+  podium.forEach((ti,s)=>{
+    const el=document.getElementById("slot"+s);
+    if(ti===null){
+      el.innerHTML=`<div class="place">${labels[s]}</div><div class="empty">— tap a team —</div>`;
+    }else{
+      const t=TEAMS[ti];
+      el.innerHTML=`<div class="place">${labels[s]}</div><div class="pick-flag">${t.f}</div><div class="pick-name">${t.n}</div>`;
+    }
+  });
+}
+function refreshGrid(){
+  TEAMS.forEach((t,i)=>{
+    document.getElementById("team"+i).classList.toggle("used", podium.includes(i));
+  });
+}
+function checkPicksDone(){
+  document.getElementById('picksNext').disabled = podium.includes(null);
+}
+
+/* ---------------- bet + sentence ---------------- */
+function renderBet(){
+  const champ = TEAMS[podium[0]];
+  const stake = +document.getElementById('stake').value;
+  document.getElementById('stakeval').textContent = stake + " 🪙";
+  document.getElementById('senseTeam').textContent = champ.n;
+  const win = stake * champ.o;
+  document.getElementById('payout').innerHTML =
+    `If <b>${champ.f} ${champ.n}</b> are crowned champions, you win <b>${win.toLocaleString()} coins</b> (×${champ.o} odds)! 🤑`;
+  const wb=document.getElementById('wordbank');
+  if(!wb.dataset.built){
+    WORDS.forEach(w=>{
+      const b=document.createElement('div');
+      b.className="word"; b.textContent=w;
+      b.onclick=()=>{ chosenWord=w;
+        document.querySelectorAll('.word').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        const bl=document.getElementById('blank'); bl.textContent=w; bl.classList.add('filled');
+      };
+      wb.appendChild(b);
+    });
+    wb.dataset.built="1";
+  }
+}
+
+/* ---------------- make slip ---------------- */
+function makeSlip(){
+  if(!chosenWord){ document.getElementById('betErr').textContent="Pick a word to finish your sentence 🗣️"; return; }
+  document.getElementById('betErr').textContent="";
+  const stake=+document.getElementById('stake').value;
+  const champ=TEAMS[podium[0]];
+  const win=stake*champ.o;
+  const id="#"+Math.abs(hash(player+Date.now())).toString().slice(0,6);
+  const medals=["🥇","🥈","🥉"], pl=["Champion","Runner-up","Third"];
+  let lines="";
+  podium.forEach((ti,s)=>{
+    const t=TEAMS[ti];
+    lines+=`<div class="slipline"><div class="m">${medals[s]}</div><div class="who">${t.f} ${t.n}</div><div class="pl">${pl[s]}</div></div>`;
+  });
+  document.getElementById('slipBox').innerHTML=`
+    <div class="slip">
+      <div class="top"><b>🎟️ BETTING SLIP</b><span class="id">${id}</span></div>
+      <div class="body">
+        <div style="font-weight:900;font-size:18px;margin-bottom:6px">Prophet: ${escapeHtml(player)}</div>
+        ${lines}
+        <div class="slipsay">"I think <b>${champ.n}</b> will win because they are the <b>${chosenWord}</b> team in the world!"</div>
+      </div>
+      <div class="foot">
+        <span class="stk">Stake: ${stake} 🪙</span>
+        <span class="win">Possible win: ${win.toLocaleString()} 🪙</span>
+      </div>
+    </div>`;
+  window._currentBet={player, podium:[...podium], stake, word:chosenWord, champOdds:champ.o, id};
+  go('s-slip');
+  fireConfetti();
+}
+
+/* ---------------- leaderboard ---------------- */
+function loadBoard(){ try{return JSON.parse(localStorage.getItem(STORE))||[]}catch(e){return[]} }
+function saveBoard(b){ localStorage.setItem(STORE, JSON.stringify(b)); }
+
+function saveToBoard(){
+  if(!window._currentBet){ return; }
+  const b=loadBoard();
+  if(b.some(x=>x.id===window._currentBet.id)){ alert("You're already on the leaderboard! ✅"); return; }
+  b.push({...window._currentBet, points:null});
+  saveBoard(b);
+  go('s-leaderboard'); renderBoard();
+}
+
+function renderBoard(){
+  const b=loadBoard();
+  fillRealSelects();
+  const box=document.getElementById('boardBox');
+  if(b.length===0){ box.innerHTML=`<p class="muted center" style="padding:18px">No predictions yet. Be the first prophet! 🔮</p>`; return; }
+  const scored=b.some(x=>x.points!==null);
+  const sorted=[...b].sort((a,c)=>(c.points??-1)-(a.points??-1));
+  let rows="";
+  sorted.forEach((x,i)=>{
+    const champ=TEAMS[x.podium[0]];
+    const win = i===0 && scored && x.points>0;
+    rows+=`<tr class="${win?'win':''}">
+      <td>${scored?(i+1):"•"}</td>
+      <td>${escapeHtml(x.player)}</td>
+      <td>${champ.f} ${champ.n}</td>
+      <td>${x.stake}🪙</td>
+      <td class="pts">${x.points===null?"—":x.points.toLocaleString()}</td>
+    </tr>`;
+  });
+  box.innerHTML=`<table class="lb">
+    <tr><th>#</th><th>Prophet</th><th>Their champion</th><th>Stake</th><th>Points</th></tr>
+    ${rows}</table>
+    ${scored?`<p class="perfectbonus">🏆 Top prophet: ${escapeHtml(sorted[0].player)}!</p>`:""}`;
+}
+
+function fillRealSelects(){
+  [0,1,2].forEach(s=>{
+    const sel=document.getElementById('real'+s);
+    if(sel.dataset.built) return;
+    sel.innerHTML=`<option value="-1">— choose —</option>`+
+      TEAMS.map((t,i)=>`<option value="${i}">${t.f} ${t.n}</option>`).join("");
+    sel.dataset.built="1";
+  });
+}
+function scoreAll(){
+  const real=[0,1,2].map(s=>+document.getElementById('real'+s).value);
+  if(real.includes(-1)){ alert("Pick all three real podium teams first."); return; }
+  const b=loadBoard();
+  b.forEach(x=>{
+    let p=0;
+    if(x.podium[0]===real[0]) p += x.stake * x.champOdds;
+    if(x.podium[1]===real[1]) p += 200;
+    if(x.podium[2]===real[2]) p += 200;
+    if(x.podium[0]===real[0]&&x.podium[1]===real[1]&&x.podium[2]===real[2]) p += 1000;
+    x.points=p;
+  });
+  saveBoard(b); renderBoard(); fireConfetti();
+}
+function clearScores(){ const b=loadBoard(); b.forEach(x=>x.points=null); saveBoard(b); renderBoard(); }
+function wipeBoard(){ if(confirm("Delete ALL predictions on this device?")){ saveBoard([]); renderBoard(); } }
+
+/* ---------------- reset ---------------- */
+function resetGame(){
+  podium=[null,null,null]; chosenWord=null; player="";
+  document.getElementById('pname').value="";
+  document.getElementById('stake').value=500;
+  const bl=document.getElementById('blank'); bl.textContent="_______"; bl.classList.remove('filled');
+  document.querySelectorAll('.word').forEach(x=>x.classList.remove('active'));
+  go('s-name');
+  setTimeout(()=>document.getElementById('pname').focus(),300);
+}
+
+/* ---------------- helpers ---------------- */
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function hash(s){let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0;}return h;}
+
+/* ---------------- confetti ---------------- */
+const cv=document.getElementById('confetti'), cx=cv.getContext('2d');
+let parts=[],raf=null;
+function size(){cv.width=innerWidth;cv.height=innerHeight;}
+addEventListener('resize',size);size();
+function fireConfetti(){
+  const cols=["#ffd24a","#ff3b6b","#1f6fff","#0a6e36","#ffffff"];
+  for(let i=0;i<150;i++){
+    parts.push({x:innerWidth/2,y:innerHeight*.3,
+      vx:(Math.cos(i)*6)*(0.5+ (i%7)/7),vy:-(4+ (i%9)),
+      g:.18+(i%5)/40,r:4+(i%6),c:cols[i%cols.length],a:1,rot:i,vr:(i%2?1:-1)*.2});
+  }
+  if(!raf) loop();
+}
+function loop(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  parts.forEach(p=>{p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.a-=.006;
+    cx.save();cx.globalAlpha=Math.max(0,p.a);cx.translate(p.x,p.y);cx.rotate(p.rot);
+    cx.fillStyle=p.c;cx.fillRect(-p.r,-p.r,p.r*2,p.r*1.4);cx.restore();});
+  parts=parts.filter(p=>p.a>0 && p.y<cv.height+40);
+  if(parts.length){raf=requestAnimationFrame(loop);}else{raf=null;cx.clearRect(0,0,cv.width,cv.height);}
+}
+</script>
+</body>
+</html>
